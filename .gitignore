@@ -1,0 +1,13 @@
+*.exe
+*.asv
+*ignorethis*
+*.tmp
+*.pyc
+*~$.*
+*~
+.idea/
+borrar/
+bu/
+codegen/
+bufferSolution/
+bufferSolution_LINUX/
