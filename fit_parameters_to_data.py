@@ -13,8 +13,6 @@ app = QtGui.QApplication(sys.argv)
 
 def f(x, a, b, c, d):
     return a * np.exp(b * x) + c * np.exp(d * x)
-    #return a*(x)+b+c
-
 
 def fit_from_csv(file_name):
     param_letters = 'abcdefghijklmnopqrstuvwxyz'
@@ -36,9 +34,24 @@ def fit_from_csv(file_name):
                             + [param_letters[y] for y in range(len(inspect.getargspec(f)))]
                             + ['R^2', 'Calc(penetrability_mm)'])
             for k in categories:
-                popt1, pcov1 = optimize.curve_fit(f,
-                                                  data_table[data_table['sample'] == k]['days'],
-                                                  data_table[data_table['sample'] == k]['penetrability_mm'])
+                # Initial estimates to be taken at initial and final 2
+                # Points, ex. for a, b
+                # P1    a*exp(b*x[0]) = y[0]
+                # P2    a*exp(b*x[1]) = y[1]
+                #       a = y[0]/exp(b*x[0]) , b = ln(y[1]/a)/x[1]
+                #       a = y[0]/exp(x[0]/x[1]*ln(y[1]/a))
+                #       a = y[0]/y[1]^(x[0]/x[1])*a^(x[0]/x[1])
+                #       a^(1-x[0]/x[1]) = y[0]/y[1]^(x[0]/x[1])
+                #       a = (y[0]/y[1]^(x[0]/x[1]))^(1/(1-x[0]/x[1]))
+                # P3    c*exp(d*x[-2]) = y[-2]
+                # P4    c*exp(d*x[-1]) = y[-1]
+                x = data_table[data_table['sample'] == k]['days']
+                y = data_table[data_table['sample'] == k]['penetrability_mm']
+                a0 = (y[0]/y[1]**(x[0]/x[1]))**(1/(1-x[0]/x[1]))
+                b0 = np.log(y[1]/a0)/x[1]
+                c0 = (y[-2]/y[-1]**(x[-2]/x[-1]))**(1/(1-x[-2]/x[-1]))
+                d0 = np.log(y[-1]/c0)/x[-1]
+                popt1, pcov1 = optimize.curve_fit(f, x, y, [a0*1000, b0, c0, d0])
                 params_list[k] = popt1
                 for j in data_table[data_table['sample'] == k]:
                     j_list = list(j)
