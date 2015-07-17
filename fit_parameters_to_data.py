@@ -1,3 +1,4 @@
+__author__ = 'Santiago Salas'
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize, stats
@@ -89,7 +90,6 @@ def fit_from_csv(file_name):
                                     + [y, y_LCL, y_UCL])
         del y, k, j
     return params_list, output_file_name
-
 
 (filename, _) = \
     QtGui.QFileDialog.getOpenFileName(None,
