@@ -22,9 +22,9 @@ def fit_from_csv(file_name):
     ext = os.path.splitext(os.path.split(file_name)[-1])[-1]
     single_name = os.path.splitext(os.path.split(file_name)[-1])[0]
     # expected columns: [category, X, Y]
-    data_table = np.genfromtxt(file_name, dtype=['S6', 'float', 'float'],
-                               delimiter=',', skip_header=0, usecols=range(3),
-                               names=True)
+    data_table = np.genfromtxt(file_name, dtype=['S25', 'float', 'float'],
+                               delimiter=',', skip_header=0,
+                               usecols=range(3), names=True)
     output_file_name = single_name + '_with_fits' + ext
     var_names = data_table.dtype.names
     categories = np.unique(data_table[var_names[0]])
@@ -66,12 +66,15 @@ def fit_from_csv(file_name):
             # Standard deviation errors on the parameters
             perr = np.sqrt(np.diag(pcov))
             # Correlation Coefficient
-
             # Confidence intervals (95%, 97.5% percentile, P(X>1.96)=2.5%)
             n_stdev_plus_minus = \
                 stats.norm.ppf(conf_level + (1.0 - conf_level)/2.0)
             popt_high = popt + n_stdev_plus_minus * perr
             popt_low = popt - n_stdev_plus_minus * perr
+            # Sum of Squares Due to Error SSE, Sum of squares of residuals SSR
+            sse = sum((y - f(x, *popt))**2)
+            ssr = sum((f(x, *popt) - np.mean(y))**2)
+            r_squared = 1 - sse/ssr
             for j in data_table[data_table[var_names[0]] == k]:
                 j_list = list(j)
                 x = j_list[1]
@@ -81,31 +84,58 @@ def fit_from_csv(file_name):
                 if np.isinf(pcov).any():
                     writer.writerow(j_list
                                     + popt.tolist()
-                                    + ['']
+                                    + [r_squared]
                                     + [y, y_LCL, y_UCL])
                 else:
                     writer.writerow(j_list
                                     + popt.tolist()
-                                    + ['']
+                                    + [r_squared]
                                     + [y, y_LCL, y_UCL])
         del y, k, j
     return params_list, output_file_name
 
-(filename, _) = \
-    QtGui.QFileDialog.getOpenFileName(None,
-                                      caption='Open file',
-                                      dir=os.path.splitdrive(sys.path[0])[0],
-                                      filter='*.csv')
+class MainForm(QtGui.QWidget):
 
-msgBox = QtGui.QMessageBox()
-msgBox.setWindowTitle('Saved file.')
-msgBox.setStandardButtons(QtGui.QMessageBox.Close)
+    def __init__(self, parent=None):
+        QtGui.QWidget.__init__(self, parent)
+        self.group = QtGui.QGroupBox('Fit Data to model', parent=self)
+        self.setWindowTitle('Fit')
+        self.setToolTip('Fit Data to model')
+        self.setWindowIcon(QtGui.QIcon(
+            os.path.join(sys.path[0], *['utils', 'graph-4x.png'])))
+        self.open = QtGui.QPushButton(QtGui.QIcon(
+            os.path.join(sys.path[0], *['utils', 'folder-4x.png'])), '')
+        self.open.connect(self.open, QtCore.SIGNAL('clicked()'),
+                          operate_on_file)
+        self.open.setToolTip('Open')
+        v_box = QtGui.QVBoxLayout()
+        v_box.addWidget(self.open)
+        self.group.setLayout(v_box)
 
-if filename != '':
-    return_value, out_file_name = fit_from_csv(filename)
+def operate_on_file():
 
-    msgBox.setText('Saved: ' + os.path.dirname(filename) + out_file_name)
+    (filename, _) = \
+        QtGui.QFileDialog.getOpenFileName(None,
+                                          caption='Open file',
+                                          dir=os.path.splitdrive(sys.path[0])[0],
+                                          filter='*.csv')
+
+    if filename != '':
+        return_value, out_file_name = fit_from_csv(filename)
+
+        msgBox = QtGui.QMessageBox()
+        msgBox.setWindowTitle('Saved file.')
+        msgBox.setStandardButtons(QtGui.QMessageBox.Close)
+        msgBox.setText('Saved: ' + os.path.dirname(filename) + '/' + out_file_name)
+        msgBox.setWindowModality(QtCore.Qt.WindowModal)
+        msgBox.exec_()
+
+main_form = MainForm()
+main_form.show()
+width = main_form.childrenRect().width()
+height = main_form.childrenRect().height()
+main_form.setFixedSize(width, height)
+# show the main widget, enter 'main loop'
 
 # exit 'main loop'
-#sys.exit()
-sys.exit(msgBox.exec_())
+sys.exit(app.exec_())
