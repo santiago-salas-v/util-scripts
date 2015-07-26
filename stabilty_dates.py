@@ -1,7 +1,7 @@
 __author__ = 'Santiago Salas'
 import datetime as dt
 import sys
-from PyQt4 import QtGui, QtCore
+from PySide import QtGui, QtCore
 
 class MainForm(QtGui.QWidget):
 
