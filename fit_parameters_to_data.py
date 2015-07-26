@@ -6,19 +6,21 @@ import csv
 import os
 import sys
 import inspect
+from string import ascii_lowercase
+from functools import partial
 from PySide import QtGui, QtCore
 # define gui app and widget
 app = QtGui.QApplication(sys.argv)
 # Widget class with changed icon
 
 
-def f(x, a, b, c, d):
-    return a * np.exp(b * x) + c * np.exp(d * x)
+def f(x, *params):
+    return params[0] * np.exp(params[1] * x) + \
+           params[2] * np.exp(params[3] * x)
 
 
-def fit_from_csv(file_name):
-    conf_level = 0.95
-    param_letters = 'abcdefghijklmnopqrstuvwxyz'
+def fit_from_csv(file_name, conf_level=0.95):
+    param_letters = ascii_lowercase
     ext = os.path.splitext(os.path.split(file_name)[-1])[-1]
     single_name = os.path.splitext(os.path.split(file_name)[-1])[0]
     # expected columns: [category, X, Y]
@@ -105,14 +107,18 @@ class MainForm(QtGui.QWidget):
             os.path.join(sys.path[0], *['utils', 'graph-4x.png'])))
         self.open = QtGui.QPushButton(QtGui.QIcon(
             os.path.join(sys.path[0], *['utils', 'folder-4x.png'])), '')
-        self.open.connect(self.open, QtCore.SIGNAL('clicked()'),
-                          operate_on_file)
+        self.open.clicked.connect(partial(operate_on_file, self))
+        self.label1 = QtGui.QLabel('1 - alpha = ')
+        self.conf_level = QtGui.QLineEdit()
+        self.conf_level.setPlaceholderText(str(0.95))
         self.open.setToolTip('Open')
-        v_box = QtGui.QVBoxLayout()
-        v_box.addWidget(self.open)
-        self.group.setLayout(v_box)
+        h_box = QtGui.QHBoxLayout()
+        h_box.addWidget(self.open)
+        h_box.addWidget(self.label1)
+        h_box.addWidget(self.conf_level)
+        self.group.setLayout(h_box)
 
-def operate_on_file():
+def operate_on_file(form):
 
     (filename, _) = \
         QtGui.QFileDialog.getOpenFileName(None,
@@ -121,8 +127,11 @@ def operate_on_file():
                                           filter='*.csv')
 
     if filename != '':
-        return_value, out_file_name = fit_from_csv(filename)
-
+        try:
+            conf_level = float(form.findChild(QtGui.QLineEdit).text())
+        except ValueError:
+            conf_level = 0.95
+        return_value, out_file_name = fit_from_csv(filename, conf_level)
         msgBox = QtGui.QMessageBox()
         msgBox.setWindowTitle('Saved file.')
         msgBox.setStandardButtons(QtGui.QMessageBox.Close)
