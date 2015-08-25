@@ -1,4 +1,5 @@
-function [fitresult, gof] = createFitsFromDataSeries(paresXY_categorias,tipoDeAjuste)
+function [fitresult, gof] = createFitsFromDataSeries(paresXY_categorias,...
+    tipoDeAjuste, factorDeAncho, varargin)
 %%CREATEFITSFROMDATASERIES Genera ajustes de curvas 
 %   Entrada: Categorias, lista de celdas con nombres de pares
 %   Entrada: lista de pares de vector columna X1,Y1,X2,Y2,...Xn,Yn
@@ -6,15 +7,21 @@ function [fitresult, gof] = createFitsFromDataSeries(paresXY_categorias,tipoDeAj
 %   gof es la lista con los parámetros de ajuste.
 paresXY             =   paresXY_categorias(1:end-1);
 categorias          =   paresXY_categorias{end};
+keepGoing           =   true;
+max_X           =   [];
 if nargin<2
     tipoDeAjuste    =   'power2';
+    factorDeAncho   =   2.5;
+    keepGoing       =   true;
+elseif length(varargin)==1
+    max_X       = varargin{1};
 end
 if mod(size(paresXY,1),2)==0 && numel(categorias)==size(paresXY,1)/2
     numberOfDataLists...
                     =   size(paresXY,1); % nargin;
     nDataPairs      =   numberOfDataLists/2;
     paresXY         =   reshape(paresXY,2,nDataPairs)';
-    keepGoing       =   true;
+    keepGoing       =   keepGoing && true;
     for i=1:nDataPairs
         keepGoing   =   keepGoing && ...
             all(numel(paresXY{i,1})==cellfun(@numel,paresXY(i,:)));
@@ -53,11 +60,22 @@ if keepGoing
             fit( xData(xData>0), yData(xData>0),ft, opts );        
         % Plot fit with data.        
         axesHandles(i)=subplot(ceil(nDataPairs/2),2,i);
-        h = plot( fitresult{i}, xData, yData, 'predobs', 0.9 );        
+        h = plot( fitresult{i}, xData, yData, 'predobs', 0.95);
+        set(h,'LineWidth',...
+            mean(cell2mat(get(h,'LineWidth')))*factorDeAncho);
+        set(h,'MarkerSize',...
+            mean(cell2mat(get(h,'MarkerSize')))*factorDeAncho);
         % Label axes
         xlabel( ['X_{',categorias{i},'} (days)'] );
         ylabel( ['Y_{',categorias{i},'} (mm)'] );
-        xlim([0,max(unique(vertcat(paresXY{:,1})))]);
+        if isempty(max_X)
+            xlim([0,max(unique(vertcat(paresXY{:,1})))]);            
+        else
+            hold on
+            xlim([0,max_X]);
+            plot(fitresult{i},'--')
+            hold off
+        end        
         ylim([0,max(unique(vertcat(paresXY{:,2})))]);
         legend( h(1:3), {categorias{i}, 'FIT','Bounds'},...
             'Location', 'NorthEast');
