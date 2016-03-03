@@ -26,6 +26,7 @@ def fit_from_csv(file_name, conf_level=0.95):
                                     single_name + '_with_fits' + ext)
     var_names = data_table.dtype.names
     categories = np.unique(data_table[var_names[0]])
+    categories = categories[categories != '']
     params_list = dict()
     with open(output_file_name, 'w') as outfile:
         writer = csv.writer(outfile, lineterminator='\n')
@@ -48,7 +49,7 @@ def fit_from_csv(file_name, conf_level=0.95):
             #       a^(1-x[0]/x[1]) = y[0]/y[1]^(x[0]/x[1])
             #       a = (y[0]/y[1]^(x[0]/x[1]))^(1/(1-x[0]/x[1]))
             # P2    c*exp(d*x[1]) = y[1]
-            # P4    c*exp(d*x[-1]) = y[-1]
+            # P4    c*exp(d*x[-1]) = y[- 1]
             x = data_table[data_table[var_names[0]] == k][var_names[1]]
             y = data_table[data_table[var_names[0]] == k][var_names[2]]
             a0 = (y[0] / y[1] ** (x[0] / x[1])) ** (1 / (1 - x[0] / x[1]))
@@ -57,10 +58,14 @@ def fit_from_csv(file_name, conf_level=0.95):
             d0 = np.log(y[-1] / c0) / x[-1]
             p0 = [a0, b0, c0, d0]
             # Curve fitting
-
-            popt, pcov, infodict, mesg, ier = \
-                optimize.curve_fit(f, x, y, p0, full_output=True,
-                                   ftol=1.0e-6, xtol=1.0e-6)
+            try:
+                popt, pcov, infodict, mesg, ier = \
+                    optimize.curve_fit(f, x, y, p0, full_output=True,
+                                       ftol=1.0e-6, xtol=1.0e-6)
+            except Exception as inst:
+                print type(inst)
+                print inst.args
+                print inst
             params_list[k] = popt
             # Standard deviation errors on the parameters
             perr = np.sqrt(np.diag(pcov))
@@ -90,7 +95,6 @@ def fit_from_csv(file_name, conf_level=0.95):
                                     + popt.tolist()
                                     + [r_squared]
                                     + [y, y_LCL, y_UCL])
-        del y, k, j
     return params_list, output_file_name
 
 class MainForm(QtGui.QWidget):
